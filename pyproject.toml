@@ -7,7 +7,7 @@ name = "pyhikvision"
 version = "0.1.0"
 description = "High-level Hikvision SDK Python wrapper"
 requires-python = ">=3.9"
-dependencies = [""]
+# dependencies = ["av"]
 
 [project.optional-dependencies]
 dev = [
