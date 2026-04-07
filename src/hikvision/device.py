@@ -17,6 +17,9 @@ from . import sdk
 
 LOG = logging.getLogger(__name__)
 
+DEFAULT_CONNECT_TIMEOUT_MS = 10000
+DEFAULT_RECV_TIMEOUT_MS = 10000
+
 
 @dataclass(frozen=True)
 class DeviceInfo:
@@ -111,6 +114,8 @@ class HikvisionPlaybackError(HikvisionDeviceError):
 
 _sdk_lock = threading.Lock()
 _sdk_refcount = 0
+_sdk_connect_timeout_ms: Optional[int] = None
+_sdk_recv_timeout_ms: Optional[int] = None
 
 
 def _format_error(error_code: int) -> str:
@@ -120,8 +125,12 @@ def _format_error(error_code: int) -> str:
     return "NET_DVR_UNKNOWN_ERROR"
 
 
-def _init_sdk(connect_timeout_ms: int, recv_timeout_ms: int) -> None:
+def _init_sdk(
+        connect_timeout_ms: int = DEFAULT_CONNECT_TIMEOUT_MS,
+        recv_timeout_ms: int = DEFAULT_RECV_TIMEOUT_MS) -> None:
     global _sdk_refcount
+    global _sdk_connect_timeout_ms
+    global _sdk_recv_timeout_ms
 
     with _sdk_lock:
         if _sdk_refcount == 0:
@@ -130,12 +139,31 @@ def _init_sdk(connect_timeout_ms: int, recv_timeout_ms: int) -> None:
 
             sdk.NET_DVR_SetConnectTime(connect_timeout_ms, 3)
             sdk.NET_DVR_SetRecvTimeOut(recv_timeout_ms)
+            _sdk_connect_timeout_ms = int(connect_timeout_ms)
+            _sdk_recv_timeout_ms = int(recv_timeout_ms)
+        elif (
+            _sdk_connect_timeout_ms is not None
+            and _sdk_recv_timeout_ms is not None
+            and (
+                int(connect_timeout_ms) != _sdk_connect_timeout_ms
+                or int(recv_timeout_ms) != _sdk_recv_timeout_ms
+            )
+        ):
+            LOG.warning(
+                "SDK already initialized with connect_timeout_ms=%s recv_timeout_ms=%s; ignoring new values connect_timeout_ms=%s recv_timeout_ms=%s",
+                _sdk_connect_timeout_ms,
+                _sdk_recv_timeout_ms,
+                int(connect_timeout_ms),
+                int(recv_timeout_ms),
+            )
 
         _sdk_refcount += 1
 
 
 def _cleanup_sdk() -> None:
     global _sdk_refcount
+    global _sdk_connect_timeout_ms
+    global _sdk_recv_timeout_ms
 
     with _sdk_lock:
         if _sdk_refcount <= 0:
@@ -145,6 +173,34 @@ def _cleanup_sdk() -> None:
         if _sdk_refcount == 0:
             if not sdk.NET_DVR_Cleanup():
                 raise HikvisionDeviceError("NET_DVR_Cleanup", sdk.NET_DVR_GetLastError())
+            _sdk_connect_timeout_ms = None
+            _sdk_recv_timeout_ms = None
+
+
+def initialize_sdk(connect_timeout_ms: int = 10000, recv_timeout_ms: int = 10000) -> None:
+    """Initialize HCNetSDK eagerly for faster subsequent device connects.
+
+    This call is process-global and reference-counted. Call `cleanup_sdk()` when
+    this eager initialization is no longer needed.
+    """
+
+    _init_sdk(connect_timeout_ms=int(connect_timeout_ms), recv_timeout_ms=int(recv_timeout_ms))
+
+
+def cleanup_sdk() -> None:
+    """Release one SDK initialization reference acquired by `initialize_sdk()`.
+
+    Cleanup is process-global and reference-counted.
+    """
+
+    _cleanup_sdk()
+
+
+def is_sdk_initialized() -> bool:
+    """Return whether HCNetSDK is currently initialized in this process."""
+
+    with _sdk_lock:
+        return _sdk_refcount > 0
 
 
 class PlaybackStream:
@@ -389,8 +445,8 @@ class HikvisionDevice:
         username: str,
         password: str,
         *,
-        connect_timeout_ms: int = 10000,
-        recv_timeout_ms: int = 10000,
+        connect_timeout_ms: int = DEFAULT_CONNECT_TIMEOUT_MS,
+        recv_timeout_ms: int = DEFAULT_RECV_TIMEOUT_MS,
         search_poll_interval_s: float = 0.1,
         packet_queue_size: int = 512,
     ):

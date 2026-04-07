@@ -2,7 +2,7 @@
 import datetime
 import os
 
-from hikvision import HikvisionDevice, PlaybackMode
+import hikvision as hik
 
 now = datetime.datetime.now()
 start = now - datetime.timedelta(minutes=10)
@@ -13,10 +13,12 @@ port = int(os.getenv("HIKVISION_TEST_PORT", "8000"))
 username = os.getenv("HIKVISION_TEST_USERNAME", "admin")
 password = os.getenv("HIKVISION_TEST_PASSWORD", "your_password")
 
-with HikvisionDevice(host, port, username, password) as device:
+hik.initialize_sdk()  # optional, eagerly initialize the SDK before creating any devices
+
+with hik.HikvisionDevice(host, port, username, password) as device:
     stream = device.open_playback(channel=33, start=start, stop=stop)
     try:
-        stream.play(PlaybackMode.STEP)
+        stream.play(hik.PlaybackMode.STEP)
 
 		# Read a few packets from the ES callback queue.
         for _ in range(20):
@@ -28,3 +30,5 @@ with HikvisionDevice(host, port, username, password) as device:
 
     finally:
         stream.close()
+
+hik.cleanup_sdk()

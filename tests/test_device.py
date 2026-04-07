@@ -219,3 +219,52 @@ def test_playback_stream_callback_in_stream_mode(monkeypatch, tmp_path):
         stream.next_packet(timeout=0.1)
 
     stream.stop()
+
+
+def test_public_initialize_cleanup_and_state(monkeypatch, tmp_path):
+    device_mod = import_fresh_device(monkeypatch, tmp_path / "sdk")
+
+    calls = {"init": 0, "set_connect": [], "set_recv": [], "cleanup": 0}
+
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Init", lambda: calls.update({"init": calls["init"] + 1}) or 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_SetConnectTime", lambda timeout_ms, retries: calls["set_connect"].append((timeout_ms, retries)) or 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_SetRecvTimeOut", lambda timeout_ms: calls["set_recv"].append(timeout_ms) or 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Cleanup", lambda: calls.update({"cleanup": calls["cleanup"] + 1}) or 1)
+
+    assert device_mod.is_sdk_initialized() is False
+
+    device_mod.initialize_sdk(connect_timeout_ms=1234, recv_timeout_ms=5678)
+    assert device_mod.is_sdk_initialized() is True
+    assert calls["init"] == 1
+    assert calls["set_connect"] == [(1234, 3)]
+    assert calls["set_recv"] == [5678]
+
+    device_mod.cleanup_sdk()
+    assert device_mod.is_sdk_initialized() is False
+    assert calls["cleanup"] == 1
+
+
+def test_eager_initialize_makes_connect_skip_sdk_init(monkeypatch, tmp_path):
+    device_mod = import_fresh_device(monkeypatch, tmp_path / "sdk")
+
+    calls = {"init": 0, "cleanup": 0}
+
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Init", lambda: calls.update({"init": calls["init"] + 1}) or 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_SetConnectTime", lambda *_args: 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_SetRecvTimeOut", lambda *_args: 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Cleanup", lambda: calls.update({"cleanup": calls["cleanup"] + 1}) or 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Login_V40", lambda *_args: 17)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Logout", lambda _user_id: 1)
+
+    device_mod.initialize_sdk()
+    assert calls["init"] == 1
+
+    device = device_mod.HikvisionDevice("127.0.0.1", 8000, "admin", "password")
+    device.connect()
+    assert calls["init"] == 1
+
+    device.disconnect()
+    assert calls["cleanup"] == 0
+
+    device_mod.cleanup_sdk()
+    assert calls["cleanup"] == 1
