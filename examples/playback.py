@@ -15,20 +15,22 @@ password = os.getenv("HIKVISION_TEST_PASSWORD", "your_password")
 
 hik.initialize_sdk()  # optional, eagerly initialize the SDK before creating any devices
 
-with hik.HikvisionDevice(host, port, username, password) as device:
-    stream = device.open_playback(channel=33, start=start, stop=stop)
-    try:
-        stream.play(hik.PlaybackMode.STEP)
+try:
+    with hik.HikvisionDevice(host, port, username, password) as device:
+        stream = device.open_playback(channel=33, start=start, stop=stop)
+        try:
+            stream.play(hik.PlaybackMode.STEP)
 
-		# Read a few packets from the ES callback queue.
-        for _ in range(20):
-            pkt = stream.next_packet(timeout=1.0)
-            if pkt is None:
-                break
+            # read a few packets from the ES callback queue.
+            for _ in range(20):
+                pkt = stream.next_packet(timeout=1.0)
+                if pkt is None:
+                    break
 
-            print(pkt.packet_type_name, pkt.timestamp, len(pkt.data))
+                print(pkt.packet_type_name, pkt.timestamp, len(pkt.data))
 
-    finally:
-        stream.close()
-
-hik.cleanup_sdk()
+        finally:
+            stream.close()
+            
+finally:
+    hik.cleanup_sdk()
