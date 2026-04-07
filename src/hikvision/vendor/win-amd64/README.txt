@@ -1,0 +1,1 @@
+EN-HCNetSDKV6.1.9.4_build20220412_win64
