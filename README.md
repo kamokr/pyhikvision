@@ -68,18 +68,18 @@ start = now - datetime.timedelta(minutes=2)
 hik.initialize_sdk() 
 
 try:
-	with HikvisionDevice("192.168.1.10", 8000, "admin", "your_password") as device:
+	with hik.HikvisionDevice("192.168.1.10", 8000, "admin", "your_password") as device:
 		stream = device.open_playback(channel=33, start=start, stop=now)
 		try:
-			stream.play(PlaybackMode.STEP)
+			stream.play(hik.PlaybackMode.STEP)
 
 			# Read a few packets from the ES callback queue.
-			for _ in range(20):
-				pkt = stream.next_packet(timeout=1.0)
-				if pkt is None:
-					break
-				if pkt.packet_type == PlaybackPacketType.VIDEO_I_FRAME:
-					print("I-frame", pkt.timestamp, len(pkt.data))
+            for _ in range(20):
+                pkt = stream.next_packet(timeout=1.0)
+                if pkt is None:
+                    break
+
+                print(pkt.packet_type_name, pkt.timestamp, len(pkt.data))
 		finally:
 			stream.close()
 finally:
