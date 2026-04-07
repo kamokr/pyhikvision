@@ -3,8 +3,14 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-# C extensions
+# Global binary ignores
 *.so
+*.dll
+
+# Keep vendored SDK binaries
+!src/hikvision/vendor/**/*.so
+!src/hikvision/vendor/**/*.so.*
+!src/hikvision/vendor/**/*.dll
 
 # Distribution / packaging
 .Python
