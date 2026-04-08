@@ -1,3 +1,6 @@
+# Dynamically generated version file
+src/hikvision/__version__.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
