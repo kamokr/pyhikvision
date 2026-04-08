@@ -1,54 +1,41 @@
-"""
-Public API for the hikvision package.
-
-This initializer also provides compatibility shims for legacy absolute
-imports used inside device.py (import sdk / from errors import *).
-"""
+"""Hikvision SDK Python bindings."""
 from __future__ import annotations
 
-import sys
+from . import net
+from hikvision.constants import DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_RECV_TIMEOUT_MS
+from hikvision.enums import RecordingFileType
+from hikvision.errors import HikvisionDeviceError, HikvisionSdkError
+from hikvision.net.dvr import LoginError, LogoutError, SearchError, PlaybackError
 
-# Compatibility aliases for legacy absolute imports inside package modules.
-from . import errors as _errors
-from . import sdk as _sdk
-
-sys.modules.setdefault("errors", _errors)
-sys.modules.setdefault("sdk", _sdk)
-
-# Public exports.
 from .device import (
     DeviceInfo,
-    HikvisionConnectError,
     HikvisionDevice,
-    HikvisionDeviceError,
-    HikvisionPlaybackError,
-    HikvisionSearchError,
+    Recording,
+)
+
+from .playback_stream import (
     TransportType,
     PlaybackMode,
     PlaybackPacket,
     PlaybackPacketType,
-    PlaybackStream,
-    cleanup_sdk,
-    initialize_sdk,
-    is_sdk_initialized,
-    RecordingFileType,
-    Recording,
+    PlaybackStream
 )
 
 __all__ = [
     "DeviceInfo",
-    "HikvisionConnectError",
     "HikvisionDevice",
     "HikvisionDeviceError",
-    "HikvisionPlaybackError",
-    "HikvisionSearchError",
+    "HikvisionSdkError",
+    "LoginError",
+    "LogoutError",
+    "PlaybackError",
     "PlaybackMode",
     "PlaybackPacket",
     "PlaybackPacketType",
     "PlaybackStream",
-    "cleanup_sdk",
-    "initialize_sdk",
-    "is_sdk_initialized",
+    "SearchError",
+    "DEFAULT_CONNECT_TIMEOUT_MS",
+    "DEFAULT_RECV_TIMEOUT_MS",
     "RecordingFileType",
     "TransportType",
     "Recording",

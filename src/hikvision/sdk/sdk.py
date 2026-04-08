@@ -1,3 +1,4 @@
+"""Python low-level bindings for Hikvision SDK."""
 import ctypes as c
 import datetime
 import logging
