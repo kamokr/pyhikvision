@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=69", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,9 +22,6 @@ include-package-data = true
 
 [tool.setuptools_scm]
 write_to = "src/hikvision/__version__.py" 
-
-[tool.setuptools.dynamic]
-version = { attr = "hikvision.__version__.__version__" }  # Fetch from __version__.py
 
 [tool.setuptools.packages.find]
 where = ["src"]
