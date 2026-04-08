@@ -13,7 +13,7 @@ port = int(os.getenv("HIKVISION_TEST_PORT", "8000"))
 username = os.getenv("HIKVISION_TEST_USERNAME", "admin")
 password = os.getenv("HIKVISION_TEST_PASSWORD", "your_password")
 
-hikvision.net.dvr.init()  # optional, eagerly initialize the SDK before creating any devices
+hikvision.net_dvr.init()  # optional, eagerly initialize the SDK before creating any devices
 
 try:
     with hikvision.HikvisionDevice(host, port, username, password) as device:
@@ -34,6 +34,6 @@ try:
 
         finally:
             stream.close()
-            
+
 finally:
-    hikvision.net.dvr.cleanup()
+    hikvision.net_dvr.cleanup()

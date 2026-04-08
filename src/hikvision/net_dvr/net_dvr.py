@@ -18,7 +18,19 @@ from ..sdk import sdk
 LOG = logging.getLogger(__name__)
 
 
-class FindNextStatus(IntEnum):
+class RecordingFileType(IntEnum):
+    ALL = 0xFF
+    CONTINUOUS = 0
+    MOTION_DETECTION = 1
+    ALARM = 2
+    ALARM_OR_MOTION = 3
+    ALARM_AND_MOTION = 4
+    COMMAND_TRIGGER = 5
+    MANUAL = 6
+    INTELLIGENT = 7
+
+
+class FindNextFileStatus(IntEnum):
     SUCCESS = 1000
     NO_FIND = 1001
     FINDING = 1002
@@ -27,13 +39,25 @@ class FindNextStatus(IntEnum):
 
 
 @dataclass(frozen=True)
-class LoginResult:
-    user_id: int
-    device_info: sdk.NET_DVR_DEVICEINFO_V40
+class DeviceInfo:
+    """Parsed device information."""
+    serial_number: str
+    start_channel: int
+    num_channels: int
+    start_dchannel: int
+    num_dchannels: int
 
 
 @dataclass(frozen=True)
-class FindFileEntry:
+class LoginResult:
+    """Result of a login operation."""
+    user_id: int
+    device_info: DeviceInfo
+
+
+@dataclass(frozen=True)
+class FindData:
+    """Parsed recording file entry."""
     filename: str
     size: int
     start: datetime.datetime
@@ -41,9 +65,10 @@ class FindFileEntry:
 
 
 @dataclass(frozen=True)
-class FindNextResult:
+class FindNextFileResult:
+    """Result of a find next file operation."""
     status: int
-    entry: Optional[FindFileEntry] = None
+    data: Optional[FindData] = None
 
 
 class LoginError(HikvisionSdkError):
@@ -166,7 +191,7 @@ def login(
         *,
         login_result_callback: Optional[Any] = None,
 ) -> LoginResult:
-    """Log in synchronously and return the user id plus the device info struct.
+    """Log in synchronously and return the user id plus mid-level device info.
 
     Args:
         host: The IP address or hostname of the device.
@@ -176,7 +201,7 @@ def login(
         login_result_callback: Optional callback for login result.
 
     Returns:
-        A LoginResult object containing the user id and device info.
+        A LoginResult object containing the user id and DeviceInfo object.
 
     Raises:
         LoginError: If the login fails.
@@ -204,7 +229,19 @@ def login(
     if user_id == -1:
         raise LoginError("NET_DVR_Login_V40", get_last_error())
 
-    return LoginResult(user_id=int(user_id), device_info=device_info)
+    device_v30 = device_info.struDeviceV30
+    raw_serial = bytes(device_v30.sSerialNumber).split(b"\x00", 1)[0]
+
+    return LoginResult(
+        user_id=int(user_id),
+        device_info=DeviceInfo(
+            serial_number=raw_serial.decode("ascii", errors="ignore"),
+            start_channel=int(device_v30.byStartChan),
+            num_channels=int(device_v30.byChanNum),
+            start_dchannel=int(device_v30.byStartDChan),
+            num_dchannels=int(device_v30.byIPChanNum),
+        ),
+    )
 
 
 def logout(user_id: int) -> None:
@@ -257,14 +294,14 @@ def find_file(
     return int(find_handle)
 
 
-def find_next_file(find_handle: int) -> FindNextResult:
+def find_next_file(find_handle: int) -> FindNextFileResult:
     """Poll a recording search handle and return its current status plus any file entry.
 
     Args:
         find_handle: The SDK find handle to poll.
 
     Returns:
-        A FindNextResult object containing the current status and any file entry.
+        A FindNextFileResult object containing the current status and any file entry.
 
     Raises:
         SearchError: If the polling fails.
@@ -274,13 +311,13 @@ def find_next_file(find_handle: int) -> FindNextResult:
     if status == -1:
         raise SearchError("NET_DVR_FindNextFile", get_last_error())
 
-    if status != FindNextStatus.SUCCESS:
-        return FindNextResult(status=status)
+    if status != FindNextFileStatus.SUCCESS:
+        return FindNextFileResult(status=status)
 
     raw_name = bytes(find_data.sFileName).split(b"\x00", 1)[0]
-    return FindNextResult(
+    return FindNextFileResult(
         status=status,
-        entry=FindFileEntry(
+        data=FindData(
             filename=raw_name.decode("ascii", errors="ignore"),
             size=int(find_data.dwFileSize),
             start=find_data.struStartTime.as_datetime(),

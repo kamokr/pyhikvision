@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import ctypes
 import datetime
 import logging
 import time
@@ -9,33 +8,15 @@ from dataclasses import dataclass
 from typing import List, Optional, Set
 
 from hikvision.constants import DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_RECV_TIMEOUT_MS
-from hikvision.enums import RecordingFileType
 from hikvision.errors import (
     HikvisionDeviceError,
     HikvisionSdkError,
 )
-from .net import dvr
+from .net_dvr import *
 from .playback_stream import PlaybackMode, PlaybackStream
 
 
 LOG = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class DeviceInfo:
-    serial_number: str
-    start_channel: int
-    num_channels: int
-    start_dchannel: int
-    num_dchannels: int
-
-
-@dataclass(frozen=True)
-class Recording:
-    filename: str
-    size: int
-    start: datetime.datetime
-    stop: datetime.datetime
 
 
 class HikvisionDevice:
@@ -65,7 +46,7 @@ class HikvisionDevice:
         self._user_id: Optional[int] = None
         self._device_info: Optional[DeviceInfo] = None
         self._playbacks: Set[PlaybackStream] = set()
-        self._login_cb = dvr.make_login_result_callback(self._on_login_result)
+        self._login_cb = make_login_result_callback(self._on_login_result)
 
     def __enter__(self) -> "HikvisionDevice":
         self.connect()
@@ -81,36 +62,34 @@ class HikvisionDevice:
     @property
     def device_info(self) -> DeviceInfo:
         if self._device_info is None:
-            raise dvr.LoginError("NET_DVR_Login_V40", -1, "not connected")
+            raise LoginError("NET_DVR_Login_V40", -1, "not connected")
         return self._device_info
 
     def connect(self) -> None:
         if self._user_id is not None:
             return
 
-        dvr.init(self._connect_timeout_ms, self._recv_timeout_ms)
+        init(self._connect_timeout_ms, self._recv_timeout_ms)
 
         try:
-            login_result = dvr.login(
+            login_result = login(
                 host=self._host,
                 port=self._port,
                 username=self._username,
                 password=self._password,
                 login_result_callback=self._login_cb,
             )
-        except dvr.LoginError:
+        except LoginError:
             with contextlib.suppress(HikvisionSdkError):
-                dvr.cleanup()
+                cleanup()
             raise
 
-        device_info = login_result.device_info
-        serial_number = ctypes.cast(device_info.struDeviceV30.sSerialNumber, ctypes.c_char_p).value
         self._device_info = DeviceInfo(
-            serial_number=(serial_number or b"").decode("ascii", errors="ignore"),
-            start_channel=int(device_info.struDeviceV30.byStartChan),
-            num_channels=int(device_info.struDeviceV30.byChanNum),
-            start_dchannel=int(device_info.struDeviceV30.byStartDChan),
-            num_dchannels=int(device_info.struDeviceV30.byIPChanNum),
+            serial_number=login_result.device_info.serial_number,
+            start_channel=login_result.device_info.start_channel,
+            num_channels=login_result.device_info.num_channels,
+            start_dchannel=login_result.device_info.start_dchannel,
+            num_dchannels=login_result.device_info.num_dchannels,
         )
         self._user_id = login_result.user_id
 
@@ -127,9 +106,9 @@ class HikvisionDevice:
         self._device_info = None
 
         try:
-            dvr.logout(user_id)
+            logout(user_id)
         finally:
-            dvr.cleanup()
+            cleanup()
 
     def close(self) -> None:
         with contextlib.suppress(HikvisionDeviceError):
@@ -142,11 +121,11 @@ class HikvisionDevice:
         stop: datetime.datetime,
         *,
         file_type: RecordingFileType = RecordingFileType.ALL,
-    ) -> List[Recording]:
+    ) -> List[FindData]:
         if self._user_id is None:
-            raise dvr.SearchError("NET_DVR_FindFile", -1, "not connected")
+            raise SearchError("NET_DVR_FindFile", -1, "not connected")
 
-        find_handle = dvr.find_file(
+        find_handle = find_file(
             self._user_id,
             int(channel),
             start,
@@ -154,42 +133,35 @@ class HikvisionDevice:
             file_type=int(file_type),
         )
 
-        results: List[Recording] = []
+        results: List[FindData] = []
 
         try:
             while True:
-                next_result = dvr.find_next_file(find_handle)
+                next_result = find_next_file(find_handle)
                 status = next_result.status
 
-                if status == dvr.FindNextStatus.SUCCESS:
-                    entry = next_result.entry
-                    if entry is None:
-                        raise dvr.SearchError("NET_DVR_FindNextFile", status, "missing file data")
-                    results.append(
-                        Recording(
-                            filename=entry.filename,
-                            size=entry.size,
-                            start=entry.start,
-                            stop=entry.stop,
-                        )
-                    )
+                if status == FindNextFileStatus.SUCCESS:
+                    data = next_result.data
+                    if data is None:
+                        raise SearchError("NET_DVR_FindNextFile", status, "missing file data")
+                    results.append(data)
                     continue
 
-                if status in (dvr.FindNextStatus.NO_FIND, dvr.FindNextStatus.NO_MORE_FILE):
+                if status in (FindNextFileStatus.NO_FIND, FindNextFileStatus.NO_MORE_FILE):
                     break
 
-                if status == dvr.FindNextStatus.FINDING:
+                if status == FindNextFileStatus.FINDING:
                     time.sleep(self._search_poll_interval_s)
                     continue
 
-                if status == dvr.FindNextStatus.EXCEPTION:
-                    raise dvr.SearchError("NET_DVR_FindNextFile", status, "device search exception")
+                if status == FindNextFileStatus.EXCEPTION:
+                    raise SearchError("NET_DVR_FindNextFile", status, "device search exception")
 
-                raise dvr.SearchError("NET_DVR_FindNextFile", status, "unexpected search status")
+                raise SearchError("NET_DVR_FindNextFile", status, "unexpected search status")
         finally:
             try:
-                dvr.find_close(find_handle)
-            except dvr.SearchError as exc:
+                find_close(find_handle)
+            except SearchError as exc:
                 LOG.warning("NET_DVR_FindClose failed with code=%s", exc.error_code)
 
         return results
@@ -201,7 +173,7 @@ class HikvisionDevice:
         stop: datetime.datetime,
     ) -> PlaybackStream:
         if self._user_id is None:
-            raise dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "not connected")
+            raise PlaybackError("NET_DVR_PlayBackByTime", -1, "not connected")
 
         stream = PlaybackStream(
             user_id=self._user_id,

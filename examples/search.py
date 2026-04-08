@@ -13,7 +13,7 @@ username = os.getenv("HIKVISION_TEST_USERNAME", "admin")
 password = os.getenv("HIKVISION_TEST_PASSWORD", "your_password")
 
 with hik.HikvisionDevice(host, port, username, password) as device:
-	records = device.search_recordings(channel=33, start=start, stop=now)
-	print("Found", len(records), "recordings")
-	for r in records[:3]:
-		print(f"file: {r.filename}, from: {r.start}, to: {r.stop}, size: {r.size}")
+    records = device.search_recordings(channel=33, start=start, stop=now)
+    print("Found", len(records), "recordings")
+    for record in records[:3]:
+        print(f"file: {record.filename}, from: {record.start}, to: {record.stop}, size: {record.size}")

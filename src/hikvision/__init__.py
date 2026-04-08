@@ -1,44 +1,25 @@
-"""Hikvision SDK Python bindings."""
+"""Hikvision SDK Python bindings.
+
+This package provides Python bindings for the Hikvision SDK, allowing users to interact with Hikvision devices such as cameras and DVRs. It includes both high-level, user-friendly interfaces for common tasks, as well as low-level access to the raw SDK functions for advanced users. The main modules are:
+- `hikvision`: High-level, Pythonic interface for common operations like login, search, and playback.
+- `hikvision.net_dvr`: Middle-level bindings that provide a more Pythonic interface while still allowing access to the underlying SDK functions.
+- `hikvision.sdk`: Low-level bindings that expose the raw C API functions and data structures of the Hikvision SDK."""
 from __future__ import annotations
 
-from . import net
-from hikvision.constants import DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_RECV_TIMEOUT_MS
-from hikvision.enums import RecordingFileType
 from hikvision.errors import HikvisionDeviceError, HikvisionSdkError
-from hikvision.net.dvr import LoginError, LogoutError, SearchError, PlaybackError
 
-from .device import (
-    DeviceInfo,
-    HikvisionDevice,
-    Recording,
-)
-
-from .playback_stream import (
-    TransportType,
-    PlaybackMode,
-    PlaybackPacket,
-    PlaybackPacketType,
-    PlaybackStream
-)
+from .device import *
+from .playback_stream import *
 
 __all__ = [
-    "DeviceInfo",
     "HikvisionDevice",
     "HikvisionDeviceError",
     "HikvisionSdkError",
-    "LoginError",
-    "LogoutError",
-    "PlaybackError",
     "PlaybackMode",
     "PlaybackPacket",
     "PlaybackPacketType",
     "PlaybackStream",
-    "SearchError",
-    "DEFAULT_CONNECT_TIMEOUT_MS",
-    "DEFAULT_RECV_TIMEOUT_MS",
-    "RecordingFileType",
     "TransportType",
-    "Recording",
 ]
 
 try:

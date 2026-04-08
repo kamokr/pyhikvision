@@ -11,7 +11,7 @@ from enum import IntEnum
 from typing import Callable, Iterator, Optional
 
 from . import sdk
-from .net import dvr
+from . import net_dvr
 
 
 LOG = logging.getLogger(__name__)
@@ -79,12 +79,12 @@ class PlaybackStream:
         self._mode: Optional[PlaybackMode] = None
         self._packet_callback: Optional[Callable[[PlaybackPacket], None]] = None
         self._closed = False
-        self._cb = dvr.make_playback_es_callback(self._play_es_cb)
+        self._cb = net_dvr.make_playback_es_callback(self._play_es_cb)
 
     @property
     def handle(self) -> int:
         if self._play_handle is None:
-            raise dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "playback handle is not initialized")
+            raise net_dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "playback handle is not initialized")
         return self._play_handle
 
     def __enter__(self) -> "PlaybackStream":
@@ -96,11 +96,11 @@ class PlaybackStream:
 
     def open(self) -> None:
         if self._closed:
-            raise dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "playback stream is closed")
+            raise net_dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "playback stream is closed")
         if self._play_handle is not None:
             return
 
-        handle = dvr.open_playback_by_time(
+        handle = net_dvr.open_playback_by_time(
             self._user_id,
             self._channel,
             self._start,
@@ -115,7 +115,7 @@ class PlaybackStream:
     def start(self, mode: PlaybackMode = PlaybackMode.STREAM) -> None:
         mode = PlaybackMode(mode)
         if self._closed:
-            raise dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "playback stream is closed")
+            raise net_dvr.PlaybackError("NET_DVR_PlayBackByTime", -1, "playback stream is closed")
 
         self.open()
         self._mode = mode
@@ -123,9 +123,9 @@ class PlaybackStream:
         if self._started:
             return
 
-        dvr.set_playback_es_callback(self.handle, self._cb)
-        dvr.playback_set_transport_type(self.handle, TransportType.TS)
-        dvr.playback_start(self.handle)
+        net_dvr.set_playback_es_callback(self.handle, self._cb)
+        net_dvr.playback_set_transport_type(self.handle, TransportType.TS)
+        net_dvr.playback_start(self.handle)
 
         self._started = True
 
@@ -143,7 +143,7 @@ class PlaybackStream:
         self._mode = None
         self._play_handle = None
 
-        dvr.stop_playback(handle)
+        net_dvr.stop_playback(handle)
 
     def stop(self) -> None:
         if self._play_handle is None or not self._started:
@@ -156,7 +156,7 @@ class PlaybackStream:
             return
 
         try:
-            with contextlib.suppress(dvr.PlaybackError):
+            with contextlib.suppress(net_dvr.PlaybackError):
                 self._release_handle()
         finally:
             self._closed = True
@@ -165,14 +165,14 @@ class PlaybackStream:
             self._play_handle = None
 
     def get_position_percent(self) -> int:
-        return dvr.playback_get_position_percent(self.handle)
+        return net_dvr.playback_get_position_percent(self.handle)
 
     def seek(self, ts: datetime.datetime) -> None:
-        dvr.playback_seek(self.handle, ts)
+        net_dvr.playback_seek(self.handle, ts)
 
     def next_packet(self, timeout: Optional[float] = None, keyframes_only: bool = False) -> Optional[PlaybackPacket]:
         if self._mode != PlaybackMode.STEP:
-            raise dvr.PlaybackError("next_packet", -1, "next_packet is only available in STEP mode")
+            raise net_dvr.PlaybackError("next_packet", -1, "next_packet is only available in STEP mode")
 
         deadline = None if timeout is None else time.time() + timeout
 
