@@ -11,10 +11,10 @@ This wrapper is organized in three levels:
 
 Runnable examples are available in the [examples directory](examples/):
 
-- [connect.py](examples/connect.py): high-level login and device info.
-- [search.py](examples/search.py): recording search over a time window.
-- [playback.py](examples/playback.py): playback and packet consumption.
-- [login_logout.py](examples/login_logout.py): mid-level init/login/logout flow.
+- [connect.py](examples/connect.py) - high-level login and device info.
+- [search.py](examples/search.py) - recording search over a time window.
+- [playback.py](examples/playback.py) - playback and packet consumption.
+- [login_logout.py](examples/login_logout.py) - mid-level init/login/logout flow.
 
 Note: SDK timeout settings are process-global and applied on first
 initialization. Later initialize/connect calls with different timeout values are
