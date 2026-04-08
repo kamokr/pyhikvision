@@ -5,18 +5,14 @@ import importlib
 import pytest
 
 
-net_dvr_mod = importlib.import_module("hikvision.net_dvr")
+net_dvr_mod = importlib.import_module("hikvision.net_dvr.net_dvr")
 
 
 @pytest.fixture(autouse=True)
 def reset_sdk_state():
-    net_dvr_mod._sdk_refcount = 0
-    net_dvr_mod._sdk_connect_timeout_ms = None
-    net_dvr_mod._sdk_recv_timeout_ms = None
+    global net_dvr_mod
+    net_dvr_mod = importlib.reload(net_dvr_mod)
     yield
-    net_dvr_mod._sdk_refcount = 0
-    net_dvr_mod._sdk_connect_timeout_ms = None
-    net_dvr_mod._sdk_recv_timeout_ms = None
 
 
 def test_init_cleanup_uses_refcounted_lifecycle(monkeypatch):

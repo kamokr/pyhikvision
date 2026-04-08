@@ -6,15 +6,12 @@ This package provides Python bindings for the Hikvision SDK, allowing users to i
 - `hikvision.sdk`: Low-level bindings that expose the raw C API functions and data structures of the Hikvision SDK."""
 from __future__ import annotations
 
-from hikvision.errors import HikvisionDeviceError, HikvisionSdkError
-
 from .device import *
 from .playback_stream import *
 
 __all__ = [
     "HikvisionDevice",
     "HikvisionDeviceError",
-    "HikvisionSdkError",
     "PlaybackMode",
     "PlaybackPacket",
     "PlaybackPacketType",

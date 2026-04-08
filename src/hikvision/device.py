@@ -8,15 +8,17 @@ from dataclasses import dataclass
 from typing import List, Optional, Set
 
 from hikvision.constants import DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_RECV_TIMEOUT_MS
-from hikvision.errors import (
-    HikvisionDeviceError,
-    HikvisionSdkError,
-)
+
 from .net_dvr import *
 from .playback_stream import PlaybackMode, PlaybackStream
 
 
 LOG = logging.getLogger(__name__)
+
+
+class HikvisionDeviceError(HikvisionSdkError):
+    """Exception raised for device-specific errors."""
+    pass
 
 
 class HikvisionDevice:
