@@ -17,10 +17,13 @@ hik.initialize_sdk()  # optional, eagerly initialize the SDK before creating any
 
 try:
     with hik.HikvisionDevice(host, port, username, password) as device:
-        stream = device.open_playback(channel=33, start=start, stop=stop)
+        stream = device.start_playback(
+            channel=33,
+            start=start,
+            stop=stop,
+            mode=hik.PlaybackMode.STEP,
+        )
         try:
-            stream.play(hik.PlaybackMode.STEP)
-
             # read a few packets from the ES callback queue.
             for _ in range(20):
                 pkt = stream.next_packet(timeout=1.0)

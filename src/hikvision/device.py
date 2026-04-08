@@ -232,8 +232,7 @@ class PlaybackStream:
         return self._play_handle
 
     def __enter__(self) -> "PlaybackStream":
-        self.open()
-        self.play(PlaybackMode.STREAM)
+        self.start(PlaybackMode.STREAM)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -260,7 +259,7 @@ class PlaybackStream:
     def set_packet_callback(self, on_packet: Optional[Callable[[PlaybackPacket], None]]) -> None:
         self._packet_callback = on_packet
 
-    def play(self, mode: PlaybackMode) -> None:
+    def start(self, mode: PlaybackMode = PlaybackMode.STREAM) -> None:
         mode = PlaybackMode(mode)
         if self._closed:
             raise HikvisionPlaybackError("NET_DVR_PlayBackByTime", -1, "playback stream is closed")
@@ -297,20 +296,28 @@ class PlaybackStream:
 
         self._started = True
 
-    def start(self) -> None:
-        # Backward-compatible alias.
-        self.play(PlaybackMode.STREAM)
+    def play(self, mode: PlaybackMode = PlaybackMode.STREAM) -> None:
+        """Convenience alias for start()."""
 
-    def stop(self) -> None:
-        self._mode = None
+        self.start(mode)
+
+    def _release_handle(self) -> None:
         if self._play_handle is None:
             return
-        if not self._started:
-            return
 
+        handle = self._play_handle
         self._started = False
-        if not sdk.NET_DVR_StopPlayBack(self.handle):
+        self._mode = None
+        self._play_handle = None
+
+        if not sdk.NET_DVR_StopPlayBack(handle):
             raise HikvisionPlaybackError("NET_DVR_StopPlayBack", sdk.NET_DVR_GetLastError())
+
+    def stop(self) -> None:
+        if self._play_handle is None or not self._started:
+            self._mode = None
+            return
+        self._release_handle()
 
     def close(self) -> None:
         if self._closed:
@@ -318,9 +325,11 @@ class PlaybackStream:
 
         try:
             with contextlib.suppress(HikvisionPlaybackError):
-                self.stop()
+                self._release_handle()
         finally:
             self._closed = True
+            self._started = False
+            self._mode = None
             self._play_handle = None
 
     def get_position_percent(self) -> int:
@@ -629,8 +638,21 @@ class HikvisionDevice:
             stop=stop,
             packet_queue_size=self._packet_queue_size,
         )
-        stream.open()
         self._playbacks.add(stream)
+        return stream
+
+    def start_playback(
+        self,
+        channel: int,
+        start: datetime.datetime,
+        stop: datetime.datetime,
+        *,
+        mode: PlaybackMode = PlaybackMode.STREAM,
+    ) -> PlaybackStream:
+        """Open and start playback in a single call."""
+
+        stream = self.open_playback(channel=channel, start=start, stop=stop)
+        stream.start(mode)
         return stream
 
     @staticmethod

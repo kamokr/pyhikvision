@@ -69,10 +69,13 @@ hik.initialize_sdk()
 
 try:
 	with hik.HikvisionDevice("192.168.1.10", 8000, "admin", "your_password") as device:
-		stream = device.open_playback(channel=33, start=start, stop=now)
+		stream = device.start_playback(
+			channel=33,
+			start=start,
+			stop=now,
+			mode=hik.PlaybackMode.STEP,
+		)
 		try:
-			stream.play(hik.PlaybackMode.STEP)
-
 			# Read a few packets from the ES callback queue.
             for _ in range(20):
                 pkt = stream.next_packet(timeout=1.0)

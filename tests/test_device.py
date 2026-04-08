@@ -131,7 +131,7 @@ def test_playback_stream_receives_packets(monkeypatch, tmp_path):
         start=datetime.datetime(2024, 1, 1, 10, 0, 0),
         stop=datetime.datetime(2024, 1, 1, 10, 5, 0),
     )
-    stream.play(device_mod.PlaybackMode.STEP)
+    stream.start(device_mod.PlaybackMode.STEP)
 
     raw = (device_mod.sdk.BYTE * 4)(1, 2, 3, 4)
     pkt = device_mod.sdk.NET_DVR_PACKET_INFO_EX()
@@ -195,7 +195,7 @@ def test_playback_stream_callback_in_stream_mode(monkeypatch, tmp_path):
         stop=datetime.datetime(2024, 1, 1, 10, 5, 0),
     )
     stream.set_packet_callback(lambda pkt: received.append(pkt))
-    stream.play(device_mod.PlaybackMode.STREAM)
+    stream.start(device_mod.PlaybackMode.STREAM)
 
     raw = (device_mod.sdk.BYTE * 4)(1, 2, 3, 4)
     pkt = device_mod.sdk.NET_DVR_PACKET_INFO_EX()
@@ -219,6 +219,72 @@ def test_playback_stream_callback_in_stream_mode(monkeypatch, tmp_path):
         stream.next_packet(timeout=0.1)
 
     stream.stop()
+
+
+def test_start_playback_convenience_starts_stream(monkeypatch, tmp_path):
+    device_mod = import_fresh_device(monkeypatch, tmp_path / "sdk")
+
+    monkeypatch.setattr(device_mod, "_init_sdk", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(device_mod, "_cleanup_sdk", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Login_V40", lambda *_args: 11)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Logout", lambda _user_id: 1)
+
+    calls = {"open": 0, "start": 0}
+
+    def fake_open(*_args):
+        calls["open"] += 1
+        return 88
+
+    def fake_control(_handle, command, *_args):
+        if command == device_mod.sdk.PlayBackControl.NET_DVR_PLAYSTART:
+            calls["start"] += 1
+        return 1
+
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_PlayBackByTime", fake_open)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_SetPlayBackESCallBack", lambda *_args: 1)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_PlayBackControl_V40", fake_control)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_StopPlayBack", lambda _handle: 1)
+
+    device = device_mod.HikvisionDevice("127.0.0.1", 8000, "admin", "password")
+    device.connect()
+
+    stream = device.start_playback(
+        channel=1,
+        start=datetime.datetime(2024, 1, 1, 10, 0, 0),
+        stop=datetime.datetime(2024, 1, 1, 10, 5, 0),
+        mode=device_mod.PlaybackMode.STEP,
+    )
+
+    assert calls["open"] == 1
+    assert calls["start"] == 1
+    assert stream._mode == device_mod.PlaybackMode.STEP
+    stream.close()
+
+
+def test_playback_close_releases_open_handle(monkeypatch, tmp_path):
+    device_mod = import_fresh_device(monkeypatch, tmp_path / "sdk")
+
+    monkeypatch.setattr(device_mod, "_init_sdk", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(device_mod, "_cleanup_sdk", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Login_V40", lambda *_args: 11)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_Logout", lambda _user_id: 1)
+
+    stop_calls = []
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_PlayBackByTime", lambda *_args: 88)
+    monkeypatch.setattr(device_mod.sdk, "NET_DVR_StopPlayBack", lambda handle: stop_calls.append(handle) or 1)
+
+    device = device_mod.HikvisionDevice("127.0.0.1", 8000, "admin", "password")
+    device.connect()
+
+    stream = device.open_playback(
+        channel=1,
+        start=datetime.datetime(2024, 1, 1, 10, 0, 0),
+        stop=datetime.datetime(2024, 1, 1, 10, 5, 0),
+    )
+    stream.open()
+    stream.close()
+
+    assert stop_calls == [88]
 
 
 def test_public_initialize_cleanup_and_state(monkeypatch, tmp_path):

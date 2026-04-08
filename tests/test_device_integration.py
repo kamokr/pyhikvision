@@ -50,7 +50,7 @@ def test_device_login_search_and_playback_smoke():
 
         stream = device.open_playback(channel=channel, start=playback_start, stop=playback_stop)
         try:
-            stream.play(device_mod.PlaybackMode.STEP)
+            stream.start(device_mod.PlaybackMode.STEP)
             packet = stream.next_packet(timeout=5.0)
             if packet is None:
                 pytest.skip("Playback opened but no packet arrived within timeout")
