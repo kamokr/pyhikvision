@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+"""High-level example: start playback and consume elementary stream packets."""
+
 import datetime
 import os
 
 import hikvision
+
 
 now = datetime.datetime.now()
 start = now - datetime.timedelta(minutes=10)

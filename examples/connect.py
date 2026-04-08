@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+"""High-level example: connect to a device and print basic channel metadata."""
+
 import os
 
 import hikvision
+
 
 host = os.getenv("HIKVISION_TEST_HOST", "192.168.1.10")
 port = int(os.getenv("HIKVISION_TEST_PORT", "8000"))

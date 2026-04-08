@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+"""High-level example: search recordings for a time window and list matches."""
+
 import datetime
 import os
 
-import hikvision as hik
+import hikvision
+
 
 now = datetime.datetime.now()
 start = now - datetime.timedelta(minutes=60)
@@ -12,7 +15,7 @@ port = int(os.getenv("HIKVISION_TEST_PORT", "8000"))
 username = os.getenv("HIKVISION_TEST_USERNAME", "admin")
 password = os.getenv("HIKVISION_TEST_PASSWORD", "your_password")
 
-with hik.HikvisionDevice(host, port, username, password) as device:
+with hikvision.HikvisionDevice(host, port, username, password) as device:
     records = device.search_recordings(channel=33, start=start, stop=now)
     print("Found", len(records), "recordings")
     for record in records[:3]:

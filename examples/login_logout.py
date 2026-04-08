@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Mid-level example: explicit SDK init, login, device info, and logout."""
+
 import os
 
 import hikvision
