@@ -7,6 +7,16 @@ This wrapper is organized in three levels:
 - Mid level: convenience wrappers in `hikvision.net_dvr` for common operations.
 - High level: `hikvision.HikvisionDevice` for Pythonic login, search, and playback workflows.
 
+## Dependencies
+
+Runtime: no third-party Python modules are required beyond the standard
+library.
+
+Build-time requirements (from `pyproject.toml`): `setuptools`,
+`setuptools-scm`, and `wheel`.
+
+Optional development dependency: `pytest` (for tests).
+
 ## Quickstart
 
 Runnable examples are available in the [examples directory](examples/):
@@ -29,4 +39,10 @@ export HIKVISION_TEST_USERNAME=admin
 export HIKVISION_TEST_PASSWORD='your_password'
 
 pytest -q -m integration
+```
+
+## Build instructions
+
+```bash
+python -m build
 ```
