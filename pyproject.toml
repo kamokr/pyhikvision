@@ -4,8 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyhikvision"
-version = "0.1.0"
+dynamic = ["version"]
 description = "High-level Hikvision SDK Python wrapper"
+readme = "README.md"
+authors = [{ name = "Kamil Okrasa", email = "kamokr@gmail.com" }]
 requires-python = ">=3.9"
 # dependencies = ["av"]
 
@@ -17,6 +19,12 @@ dev = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
+
+[tool.setuptools_scm]
+write_to = "src/hikvision/__version__.py" 
+
+[tool.setuptools.dynamic]
+version = { attr = "hikvision.__version__.__version__" }  # Fetch from __version__.py
 
 [tool.setuptools.packages.find]
 where = ["src"]
