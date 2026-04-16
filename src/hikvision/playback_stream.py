@@ -48,7 +48,8 @@ class PlaybackPacketType(IntEnum):
 @dataclass(frozen=True)
 class PlaybackPacket:
     packet_type: int
-    timestamp: datetime.datetime
+    timestamp: int
+    date_time: datetime.datetime
     data: bytes
     width: int
     height: int
@@ -57,6 +58,14 @@ class PlaybackPacket:
     @property
     def packet_type_name(self) -> str:
         return PlaybackPacketType.name_from_value(self.packet_type)
+
+
+def local2ts(dt: datetime.datetime):
+    return int(datetime.datetime.timestamp(dt)*1000)
+
+
+def ts2local(ts: int):
+    return datetime.datetime.fromtimestamp(ts/1000)
 
 
 class PlaybackStream:
@@ -230,7 +239,8 @@ class PlaybackStream:
         )
         packet = PlaybackPacket(
             packet_type=int(contents.dwPacketType),
-            timestamp=frame_dt,
+            timestamp=local2ts(frame_dt),
+            date_time=frame_dt,
             data=bytes(data_ptr.contents),
             width=int(contents.wWidth),
             height=int(contents.wHeight),
