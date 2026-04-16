@@ -248,10 +248,5 @@ class PlaybackStream:
         if self._mode != PlaybackMode.STEP:
             return
 
-        try:
-            self._queue.put_nowait(packet)
-        except queue.Full:
-            with contextlib.suppress(queue.Empty):
-                self._queue.get_nowait()
-            with contextlib.suppress(queue.Full):
-                self._queue.put_nowait(packet)
+        # In STEP mode we preserve packet order and do not drop frames.
+        self._queue.put(packet)
