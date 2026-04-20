@@ -75,7 +75,7 @@ class PlaybackStream:
         channel: int,
         start: datetime.datetime,
         stop: datetime.datetime,
-        packet_queue_size: int = 512,
+        packet_queue_size: int = 150,
     ):
         self._user_id = user_id
         self._channel = channel
@@ -87,6 +87,7 @@ class PlaybackStream:
         self._started = False
         self._mode: Optional[PlaybackMode] = None
         self._packet_callback: Optional[Callable[[PlaybackPacket], None]] = None
+        self._closing = False
         self._closed = False
         self._cb = net_dvr.make_playback_es_callback(self._play_es_cb)
 
@@ -148,9 +149,16 @@ class PlaybackStream:
             return
 
         handle = self._play_handle
+        was_step_mode = self._mode == PlaybackMode.STEP
         self._started = False
         self._mode = None
         self._play_handle = None
+
+        if was_step_mode:
+            # If the ES callback is blocked on queue.put() because the queue is full,
+            # free one slot so shutdown can proceed.
+            with contextlib.suppress(queue.Empty):
+                self._queue.get_nowait()
 
         net_dvr.stop_playback(handle)
 
@@ -164,11 +172,13 @@ class PlaybackStream:
         if self._closed:
             return
 
+        self._closing = True
         try:
             with contextlib.suppress(net_dvr.PlaybackError):
                 self._release_handle()
         finally:
             self._closed = True
+            self._closing = False
             self._started = False
             self._mode = None
             self._play_handle = None
@@ -214,6 +224,9 @@ class PlaybackStream:
 
     def _play_es_cb(self, lPlayHandle, packet_info, _user):
         if packet_info is None:
+            return
+        
+        if self._closing:
             return
 
         contents = packet_info.contents
